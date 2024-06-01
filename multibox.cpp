@@ -13,6 +13,7 @@ void DisplayTabContent(HWND hwnd, int tabIndex);
 void ShowHelloWorld(HWND hwnd);
 void ShowClock(HWND hwnd);
 void ShowFileContent(HWND hwnd);
+void ShowRainbow(HWND hwnd);
 void UpdateClock(HWND hwnd);
 void BrowseFolder(HWND hwnd);
 void ListFilesInFolder(HWND hwnd, const std::wstring& folderPath);
@@ -101,9 +102,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             // Handle key down events
             if (wParam == VK_TAB) {
                 if (GetKeyState(VK_SHIFT) & 0x8000) {  // Shift+Tab for previous tab
-                    currentTabIndex = (currentTabIndex - 1 + 3) % 3;
+                    currentTabIndex = (currentTabIndex - 1 + 4) % 4;
                 } else {  // Tab for next tab
-                    currentTabIndex = (currentTabIndex + 1) % 3;
+                    currentTabIndex = (currentTabIndex + 1) % 4;
                 }
                 TabCtrl_SetCurSel(hTab, currentTabIndex);
                 DisplayTabContent(hwnd, currentTabIndex); // Change the tab content
@@ -129,9 +130,9 @@ void AddTabs(HWND hwnd) {
     tie.mask = TCIF_TEXT;
 
     // Array of tab names
-    const wchar_t* tabNames[] = { L"Hello World", L"Clock", L"Read File" };
+    const wchar_t* tabNames[] = { L"Hello World", L"Clock", L"Read File", L"Rainbow" };
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         tie.pszText = const_cast<LPWSTR>(tabNames[i]);
         TabCtrl_InsertItem(hwnd, i, &tie); // Insert each tab
     }
@@ -171,6 +172,9 @@ void DisplayTabContent(HWND hwnd, int tabIndex) {
             GetClientRect(hwnd, &rc);
             hButton = CreateWindow(L"BUTTON", L"Browse Folder", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                                    20, rc.bottom - 40, 120, 30, hwnd, (HMENU)1, GetModuleHandle(nullptr), nullptr);
+            break;
+        case 3:
+            ShowRainbow(hwnd);
             break;
     }
 }
@@ -217,6 +221,24 @@ void ShowFileContent(HWND hwnd) {
         lvColumn.cx = columnWidths[i];
         ListView_InsertColumn(hChildWnd, i, &lvColumn);
     }
+}
+
+// Show a rainbow in the "Rainbow" tab
+void ShowRainbow(HWND hwnd) {
+    static COLORREF rainbowColors[] = { RGB(148, 0, 211), RGB(75, 0, 130), RGB(0, 0, 255), RGB(0, 255, 0), RGB(255, 255, 0), RGB(255, 127, 0), RGB(255, 0, 0) };
+    RECT rc;
+    GetClientRect(hwnd, &rc);
+
+    HDC hdc = GetDC(hwnd);
+    int bandHeight = (rc.bottom - 100) / 7;
+
+    for (int i = 0; i < 7; ++i) {
+        HBRUSH hBrush = CreateSolidBrush(rainbowColors[i]);
+        RECT band = { 0, 50 + i * bandHeight, rc.right, 50 + (i + 1) * bandHeight };
+        FillRect(hdc, &band, hBrush);
+        DeleteObject(hBrush);
+    }
+    ReleaseDC(hwnd, hdc);
 }
 
 // Open folder browser dialog
