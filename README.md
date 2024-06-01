@@ -13,6 +13,7 @@ mulitbox
 - Mermaid diagrams
 - Collaboration acesss sharing
 - Theory on app backend
+- MarkDown
 
 ## To do
 - Setup C++ compilers
