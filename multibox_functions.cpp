@@ -11,6 +11,8 @@ HWND hFontSizeSlider = nullptr;   // Handle to the font size slider
 HWND hRedSlider = nullptr;        // Handle to the red color slider
 HWND hGreenSlider = nullptr;      // Handle to the green color slider
 HWND hBlueSlider = nullptr;       // Handle to the blue color slider
+HWND hColorPreview = nullptr;     // Handle to the color preview
+HWND hRGBValues = nullptr;        // Handle to display RGB values
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
@@ -39,7 +41,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
         case WM_TIMER:
             // Handle timer events
-            if (wParam == 1 && currentTabIndex == 1) {
+            if (wParam == 1) {
                 UpdateClock(hwnd); // Update the clock if the "Clock" tab is selected
             }
             break;
@@ -59,7 +61,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
         case WM_HSCROLL:
             // Handle slider changes
-            if (hwnd == hFontSizeSlider || hwnd == hRedSlider || hwnd == hGreenSlider || hwnd == hBlueSlider) {
+            if ((HWND)lParam == hFontSizeSlider || (HWND)lParam == hRedSlider || (HWND)lParam == hGreenSlider || (HWND)lParam == hBlueSlider) {
                 UpdateStyle(hwnd);
             }
             break;
@@ -96,7 +98,7 @@ void DisplayTabContent(HWND hwnd, int tabIndex) {
         hButton = nullptr;
     }
 
-    // Destroy sliders if they exist
+    // Destroy sliders and color preview if they exist
     if (hFontSizeSlider) {
         DestroyWindow(hFontSizeSlider);
         hFontSizeSlider = nullptr;
@@ -113,6 +115,14 @@ void DisplayTabContent(HWND hwnd, int tabIndex) {
         DestroyWindow(hBlueSlider);
         hBlueSlider = nullptr;
     }
+    if (hColorPreview) {
+        DestroyWindow(hColorPreview);
+        hColorPreview = nullptr;
+    }
+    if (hRGBValues) {
+        DestroyWindow(hRGBValues);
+        hRGBValues = nullptr;
+    }
 
     // Stop the timer if it's running
     KillTimer(hwnd, 1);
@@ -124,7 +134,6 @@ void DisplayTabContent(HWND hwnd, int tabIndex) {
             break;
         case 1:
             ShowClock(hwnd);
-            UpdateClock(hwnd);  // Update clock immediately
             SetTimer(hwnd, 1, 1000, nullptr); // Start the timer for updating the clock
             break;
         case 2:
@@ -139,6 +148,7 @@ void DisplayTabContent(HWND hwnd, int tabIndex) {
             ShowStyleSettings(hwnd);
             break;
     }
+    ApplyStyleToAllWindows(hwnd);
 }
 
 void ShowHelloWorld(HWND hwnd) {
@@ -149,6 +159,7 @@ void ShowHelloWorld(HWND hwnd) {
 void ShowClock(HWND hwnd) {
     hChildWnd = CreateWindow(L"STATIC", L"", WS_CHILD | WS_VISIBLE,
                              20, 50, 150, 20, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+    UpdateClock(hwnd);  // Update clock immediately
 }
 
 void UpdateClock(HWND hwnd) {
@@ -218,6 +229,12 @@ void ShowStyleSettings(HWND hwnd) {
     SendMessage(hBlueSlider, TBM_SETRANGE, TRUE, MAKELONG(0, 255)); // Set range from 0 to 255
     SendMessage(hBlueSlider, TBM_SETPOS, TRUE, GetBValue(textColor)); // Set initial position
 
+    hColorPreview = CreateWindow(L"STATIC", nullptr, WS_CHILD | WS_VISIBLE | SS_NOTIFY | SS_SUNKEN,
+                                 320, 100, 100, 100, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    hRGBValues = CreateWindow(L"STATIC", L"", WS_CHILD | WS_VISIBLE,
+                              20, 220, 400, 20, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+
     // Apply initial style
     UpdateStyle(hwnd);
 }
@@ -286,7 +303,7 @@ void ResizeControls(HWND hwnd) {
         SetWindowPos(hButton, nullptr, 20, rc.bottom - 40, 120, 30, SWP_NOZORDER);
     }
 
-    // Resize sliders
+    // Resize sliders and color preview
     if (hFontSizeSlider) {
         SetWindowPos(hFontSizeSlider, nullptr, 100, 60, 200, 30, SWP_NOZORDER);
     }
@@ -298,6 +315,12 @@ void ResizeControls(HWND hwnd) {
     }
     if (hBlueSlider) {
         SetWindowPos(hBlueSlider, nullptr, 100, 180, 200, 30, SWP_NOZORDER);
+    }
+    if (hColorPreview) {
+        SetWindowPos(hColorPreview, nullptr, 320, 100, 100, 100, SWP_NOZORDER);
+    }
+    if (hRGBValues) {
+        SetWindowPos(hRGBValues, nullptr, 20, 220, 400, 20, SWP_NOZORDER);
     }
 
     // Invalidate the entire window to force a redraw
@@ -311,13 +334,13 @@ void ChangeFont(HWND hwnd, const wchar_t* fontName, int fontSize) {
     }
     hFont = CreateFont(fontSize, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
                        OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, fontName);
-    SendMessage(hChildWnd, WM_SETFONT, (WPARAM)hFont, TRUE);
+    ApplyStyleToAllWindows(hwnd);
 }
 
 void ChangeColor(HWND hwnd, COLORREF color) {
     textColor = color;
-    InvalidateRect(hChildWnd, nullptr, TRUE); // Redraw the child window with the new color
-    UpdateWindow(hChildWnd);
+    ApplyStyleToAllWindows(hwnd);
+    UpdatePreview(hwnd);
 }
 
 void UpdateStyle(HWND hwnd) {
@@ -332,4 +355,36 @@ void UpdateStyle(HWND hwnd) {
     // Update the font and color
     ChangeFont(hwnd, L"Arial", fontSize);
     ChangeColor(hwnd, RGB(red, green, blue));
+
+    // Update the RGB values display
+    DisplayRGBValues(hwnd);
+}
+
+void UpdatePreview(HWND hwnd) {
+    HDC hdc = GetDC(hColorPreview);
+    RECT rect;
+    GetClientRect(hColorPreview, &rect);
+    HBRUSH hBrush = CreateSolidBrush(textColor);
+    FillRect(hdc, &rect, hBrush);
+    DeleteObject(hBrush);
+    ReleaseDC(hColorPreview, hdc);
+}
+
+void DisplayRGBValues(HWND hwnd) {
+    int red = SendMessage(hRedSlider, TBM_GETPOS, 0, 0);
+    int green = SendMessage(hGreenSlider, TBM_GETPOS, 0, 0);
+    int blue = SendMessage(hBlueSlider, TBM_GETPOS, 0, 0);
+
+    wchar_t rgbStr[100];
+    swprintf(rgbStr, sizeof(rgbStr) / sizeof(wchar_t), L"RGB: (%d, %d, %d)", red, green, blue);
+    SetWindowText(hRGBValues, rgbStr);
+}
+
+void ApplyStyleToAllWindows(HWND hwnd) {
+    EnumChildWindows(hwnd, [](HWND child, LPARAM lParam) -> BOOL {
+        SendMessage(child, WM_SETFONT, (WPARAM)hFont, TRUE);
+        InvalidateRect(child, nullptr, TRUE);
+        UpdateWindow(child);
+        return TRUE;
+    }, 0);
 }

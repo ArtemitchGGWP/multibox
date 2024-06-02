@@ -24,6 +24,9 @@ void ResizeControls(HWND hwnd);
 void ChangeFont(HWND hwnd, const wchar_t* fontName, int fontSize);
 void ChangeColor(HWND hwnd, COLORREF color);
 void UpdateStyle(HWND hwnd);
+void UpdatePreview(HWND hwnd);
+void ApplyStyleToAllWindows(HWND hwnd);
+void DisplayRGBValues(HWND hwnd);
 
 // Global variables
 extern HWND hTab;              // Handle to the tab control
@@ -36,5 +39,7 @@ extern HWND hFontSizeSlider;   // Handle to the font size slider
 extern HWND hRedSlider;        // Handle to the red color slider
 extern HWND hGreenSlider;      // Handle to the green color slider
 extern HWND hBlueSlider;       // Handle to the blue color slider
+extern HWND hColorPreview;     // Handle to the color preview
+extern HWND hRGBValues;        // Handle to display RGB values
 
 #endif // MULTIBOX_H
