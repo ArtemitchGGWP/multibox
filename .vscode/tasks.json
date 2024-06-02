@@ -8,7 +8,7 @@
                 "-fdiagnostics-color=always",
                 "-g",
                 "-std=c++17",
-                "${file}",
+                "${fileDirname}\\*.cpp",
                 "-municode",
                 "-lcomctl32",
                 "-Wall",
