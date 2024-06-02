@@ -5,6 +5,12 @@ HWND hTab;              // Handle to the tab control
 HWND hChildWnd;         // Handle to the child window (content of the tab)
 HWND hButton;           // Handle to the "Browse Folder" button
 int currentTabIndex = 0; // Index of the currently selected tab
+HFONT hFont = nullptr;  // Handle to the font
+COLORREF textColor = RGB(0, 0, 0); // Default text color (black)
+HWND hFontSizeSlider = nullptr;   // Handle to the font size slider
+HWND hRedSlider = nullptr;        // Handle to the red color slider
+HWND hGreenSlider = nullptr;      // Handle to the green color slider
+HWND hBlueSlider = nullptr;       // Handle to the blue color slider
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
@@ -44,23 +50,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             PostQuitMessage(0);       // Post quit message
             break;
 
-        case WM_KEYDOWN:
-            // Handle key down events
-            if (wParam == VK_TAB) {
-                if (GetKeyState(VK_SHIFT) & 0x8000) {  // Shift+Tab for previous tab
-                    currentTabIndex = (currentTabIndex - 1 + 3) % 3;
-                } else {  // Tab for next tab
-                    currentTabIndex = (currentTabIndex + 1) % 3;
-                }
-                TabCtrl_SetCurSel(hTab, currentTabIndex);
-                DisplayTabContent(hwnd, currentTabIndex); // Change the tab content
-            }
-            break;
-
         case WM_COMMAND:
             // Handle button click events
             if (LOWORD(wParam) == 1 && currentTabIndex == 2) {
                 BrowseFolder(hwnd); // Open folder browser when "Browse Folder" button is clicked
+            }
+            break;
+
+        case WM_HSCROLL:
+            // Handle slider changes
+            if (hwnd == hFontSizeSlider || hwnd == hRedSlider || hwnd == hGreenSlider || hwnd == hBlueSlider) {
+                UpdateStyle(hwnd);
             }
             break;
 
@@ -75,9 +75,9 @@ void AddTabs(HWND hwnd) {
     tie.mask = TCIF_TEXT;
 
     // Array of tab names
-    const wchar_t* tabNames[] = { L"Hello World", L"Clock", L"Read File" };
+    const wchar_t* tabNames[] = { L"Hello World", L"Clock", L"Read File", L"Style Settings" };
 
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 4; ++i) {
         tie.pszText = const_cast<LPWSTR>(tabNames[i]);
         TabCtrl_InsertItem(hwnd, i, &tie); // Insert each tab
     }
@@ -94,6 +94,24 @@ void DisplayTabContent(HWND hwnd, int tabIndex) {
     if (hButton) {
         DestroyWindow(hButton);
         hButton = nullptr;
+    }
+
+    // Destroy sliders if they exist
+    if (hFontSizeSlider) {
+        DestroyWindow(hFontSizeSlider);
+        hFontSizeSlider = nullptr;
+    }
+    if (hRedSlider) {
+        DestroyWindow(hRedSlider);
+        hRedSlider = nullptr;
+    }
+    if (hGreenSlider) {
+        DestroyWindow(hGreenSlider);
+        hGreenSlider = nullptr;
+    }
+    if (hBlueSlider) {
+        DestroyWindow(hBlueSlider);
+        hBlueSlider = nullptr;
     }
 
     // Stop the timer if it's running
@@ -116,6 +134,9 @@ void DisplayTabContent(HWND hwnd, int tabIndex) {
             GetClientRect(hwnd, &rc);
             hButton = CreateWindow(L"BUTTON", L"Browse Folder", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
                                    20, rc.bottom - 40, 120, 30, hwnd, (HMENU)1, GetModuleHandle(nullptr), nullptr);
+            break;
+        case 3:
+            ShowStyleSettings(hwnd);
             break;
     }
 }
@@ -158,6 +179,47 @@ void ShowFileContent(HWND hwnd) {
         lvColumn.cx = columnWidths[i];
         ListView_InsertColumn(hChildWnd, i, &lvColumn);
     }
+}
+
+void ShowStyleSettings(HWND hwnd) {
+    // Create controls for changing style settings
+    hChildWnd = CreateWindow(L"STATIC", L"Style Settings", WS_CHILD | WS_VISIBLE,
+                             20, 20, 150, 20, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    CreateWindow(L"STATIC", L"Font Size:", WS_CHILD | WS_VISIBLE,
+                 20, 60, 80, 20, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    hFontSizeSlider = CreateWindow(TRACKBAR_CLASS, nullptr, WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS,
+                                   100, 60, 200, 30, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+    SendMessage(hFontSizeSlider, TBM_SETRANGE, TRUE, MAKELONG(10, 30)); // Set range from 10 to 30
+    SendMessage(hFontSizeSlider, TBM_SETPOS, TRUE, 20); // Set initial position
+
+    CreateWindow(L"STATIC", L"Red:", WS_CHILD | WS_VISIBLE,
+                 20, 100, 80, 20, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    hRedSlider = CreateWindow(TRACKBAR_CLASS, nullptr, WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS,
+                              100, 100, 200, 30, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+    SendMessage(hRedSlider, TBM_SETRANGE, TRUE, MAKELONG(0, 255)); // Set range from 0 to 255
+    SendMessage(hRedSlider, TBM_SETPOS, TRUE, GetRValue(textColor)); // Set initial position
+
+    CreateWindow(L"STATIC", L"Green:", WS_CHILD | WS_VISIBLE,
+                 20, 140, 80, 20, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    hGreenSlider = CreateWindow(TRACKBAR_CLASS, nullptr, WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS,
+                                100, 140, 200, 30, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+    SendMessage(hGreenSlider, TBM_SETRANGE, TRUE, MAKELONG(0, 255)); // Set range from 0 to 255
+    SendMessage(hGreenSlider, TBM_SETPOS, TRUE, GetGValue(textColor)); // Set initial position
+
+    CreateWindow(L"STATIC", L"Blue:", WS_CHILD | WS_VISIBLE,
+                 20, 180, 80, 20, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+
+    hBlueSlider = CreateWindow(TRACKBAR_CLASS, nullptr, WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS,
+                               100, 180, 200, 30, hwnd, nullptr, GetModuleHandle(nullptr), nullptr);
+    SendMessage(hBlueSlider, TBM_SETRANGE, TRUE, MAKELONG(0, 255)); // Set range from 0 to 255
+    SendMessage(hBlueSlider, TBM_SETPOS, TRUE, GetBValue(textColor)); // Set initial position
+
+    // Apply initial style
+    UpdateStyle(hwnd);
 }
 
 void BrowseFolder(HWND hwnd) {
@@ -224,7 +286,50 @@ void ResizeControls(HWND hwnd) {
         SetWindowPos(hButton, nullptr, 20, rc.bottom - 40, 120, 30, SWP_NOZORDER);
     }
 
+    // Resize sliders
+    if (hFontSizeSlider) {
+        SetWindowPos(hFontSizeSlider, nullptr, 100, 60, 200, 30, SWP_NOZORDER);
+    }
+    if (hRedSlider) {
+        SetWindowPos(hRedSlider, nullptr, 100, 100, 200, 30, SWP_NOZORDER);
+    }
+    if (hGreenSlider) {
+        SetWindowPos(hGreenSlider, nullptr, 100, 140, 200, 30, SWP_NOZORDER);
+    }
+    if (hBlueSlider) {
+        SetWindowPos(hBlueSlider, nullptr, 100, 180, 200, 30, SWP_NOZORDER);
+    }
+
     // Invalidate the entire window to force a redraw
     InvalidateRect(hwnd, nullptr, TRUE);
     UpdateWindow(hwnd);
+}
+
+void ChangeFont(HWND hwnd, const wchar_t* fontName, int fontSize) {
+    if (hFont) {
+        DeleteObject(hFont); // Delete the old font
+    }
+    hFont = CreateFont(fontSize, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                       OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, VARIABLE_PITCH, fontName);
+    SendMessage(hChildWnd, WM_SETFONT, (WPARAM)hFont, TRUE);
+}
+
+void ChangeColor(HWND hwnd, COLORREF color) {
+    textColor = color;
+    InvalidateRect(hChildWnd, nullptr, TRUE); // Redraw the child window with the new color
+    UpdateWindow(hChildWnd);
+}
+
+void UpdateStyle(HWND hwnd) {
+    // Get the font size from the slider
+    int fontSize = SendMessage(hFontSizeSlider, TBM_GETPOS, 0, 0);
+
+    // Get the RGB values from the sliders
+    int red = SendMessage(hRedSlider, TBM_GETPOS, 0, 0);
+    int green = SendMessage(hGreenSlider, TBM_GETPOS, 0, 0);
+    int blue = SendMessage(hBlueSlider, TBM_GETPOS, 0, 0);
+
+    // Update the font and color
+    ChangeFont(hwnd, L"Arial", fontSize);
+    ChangeColor(hwnd, RGB(red, green, blue));
 }
