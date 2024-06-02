@@ -16,15 +16,30 @@ void DisplayTabContent(HWND hwnd, int tabIndex);
 void ShowHelloWorld(HWND hwnd);
 void ShowClock(HWND hwnd);
 void ShowFileContent(HWND hwnd);
+void ShowStyleSettings(HWND hwnd);
 void UpdateClock(HWND hwnd);
 void BrowseFolder(HWND hwnd);
 void ListFilesInFolder(HWND hwnd, const std::wstring& folderPath);
 void ResizeControls(HWND hwnd);
+void ChangeFont(HWND hwnd, const wchar_t* fontName, int fontSize);
+void ChangeColor(HWND hwnd, COLORREF color);
+void UpdateStyle(HWND hwnd);
+void UpdatePreview(HWND hwnd);
+void ApplyStyleToAllWindows(HWND hwnd);
+void DisplayRGBValues(HWND hwnd);
 
 // Global variables
 extern HWND hTab;              // Handle to the tab control
 extern HWND hChildWnd;         // Handle to the child window (content of the tab)
 extern HWND hButton;           // Handle to the "Browse Folder" button
 extern int currentTabIndex;    // Index of the currently selected tab
+extern HFONT hFont;            // Handle to the font
+extern COLORREF textColor;     // Color for the text
+extern HWND hFontSizeSlider;   // Handle to the font size slider
+extern HWND hRedSlider;        // Handle to the red color slider
+extern HWND hGreenSlider;      // Handle to the green color slider
+extern HWND hBlueSlider;       // Handle to the blue color slider
+extern HWND hColorPreview;     // Handle to the color preview
+extern HWND hRGBValues;        // Handle to display RGB values
 
 #endif // MULTIBOX_H
